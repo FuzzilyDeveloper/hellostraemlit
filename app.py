@@ -3,7 +3,7 @@ import streamlit as st
 import openai
 import os
 
-# Set your OpenAI API key
+# Load OpenAI API key from environment variable
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
 st.title("✨ Interactive Storyteller")
@@ -17,10 +17,7 @@ if "story" not in st.session_state:
 user_input = st.text_input("What happens next?")
 
 if st.button("Continue the story"):
-    prompt = f"{st.session_state.story}
-
-User: {user_input}
-Storyteller:"
+    prompt = f"""{st.session_state.story}\n\nUser: {user_input}\nStoryteller:"""  # Use triple quotes for multiline f-string
     response = openai.Completion.create(
         engine="text-davinci-003",  # or "gpt-3.5-turbo" with Chat API
         prompt=prompt,
@@ -29,10 +26,7 @@ Storyteller:"
         stop=["User:"]
     )
     new_text = response.choices[0].text.strip()
-    st.session_state.story += f"
-
-You: {user_input}
-{new_text}"
+    st.session_state.story += f"\n\nYou: {user_input}\n{new_text}"
 
 st.markdown("### 📖 Your Story So Far")
 st.write(st.session_state.story)
