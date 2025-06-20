@@ -10,7 +10,7 @@ except ImportError:
 # Define the story structure as a dictionary
 story = {
     "start": {
-        "text": "You stand at a crossroad in Eldoria, the air thick with mystery. A dark forest looms to the left, a mountain path rises to the right, and a village glows ahead.",
+        "text": "You stand at a crossroad in Colombo, the air thick with mystery. A dark forest looms to the left, a mountain path rises to the right, and a village glows ahead.",
         "choices": {
             "1": {"text": "Enter the dark forest", "next_scene": "forest"},
             "2": {"text": "Take the mountain path", "next_scene": "mountain"},
