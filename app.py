@@ -1,4 +1,3 @@
-
 # Interactive Storytelling App for Google Colab and Streamlit
 # Save as `app.py` for GitHub and Streamlit deployment
 
