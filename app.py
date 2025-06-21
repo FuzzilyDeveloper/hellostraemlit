@@ -1,118 +1,66 @@
-# Interactive Storytelling App for Google Colab and Streamlit
-# Save as `app.py` for GitHub and Streamlit deployment
 
-import sys
-try:
-    import streamlit as st
-except ImportError:
-    st = None  # Streamlit not available in Colab
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+import plotly.express as px
+from datetime import datetime, timedelta
 
-# Define the story structure as a dictionary
-story = {
-    "start": {
-        "text": "You stand at a crossroad in Colombo, the air thick with mystery. A dark forest looms to the left, a mountain path rises to the right, and a village glows ahead.",
-        "choices": {
-            "1": {"text": "Enter the dark forest", "next_scene": "forest"},
-            "2": {"text": "Take the mountain path", "next_scene": "mountain"},
-            "3": {"text": "Visit the village", "next_scene": "village"}
-        }
-    },
-    "forest": {
-        "text": "The forest is dense, and a low growl echoes nearby. A wolf steps into view, its eyes glinting.",
-        "choices": {
-            "1": {"text": "Fight the wolf", "next_scene": "fight_wolf"},
-            "2": {"text": "Flee back to the crossroad", "next_scene": "start"}
-        }
-    },
-    "mountain": {
-        "text": "The mountain path is steep, and you find an ancient cave with glowing runes.",
-        "choices": {
-            "1": {"text": "Enter the cave", "next_scene": "cave"},
-            "2": {"text": "Return to the crossroad", "next_scene": "start"}
-        }
-    },
-    "village": {
-        "text": "The village is bustling, and a wise elder offers you a magical amulet.",
-        "choices": {
-            "1": {"text": "Accept the amulet", "next_scene": "amulet"},
-            "2": {"text": "Decline and leave", "next_scene": "start"}
-        }
-    },
-    "fight_wolf": {
-        "text": "You defeat the wolf and find a glowing amulet in its lair. The amulet hums with power, ending your journey.",
-        "choices": {}  # End of story
-    },
-    "cave": {
-        "text": "Inside the cave, you discover a treasure chest guarded by a riddle. You solve it and claim the treasure, ending your quest.",
-        "choices": {}  # End of story
-    },
-    "amulet": {
-        "text": "The amulet grants you visions of Eldoria’s future, concluding your adventure with wisdom.",
-        "choices": {}  # End of story
-    }
-}
+# Set page title
+st.title("Simple Stock Data App")
 
-def run_colab():
-    """Run the interactive story in Google Colab."""
-    current_scene = "start"
-    while True:
-        scene = story[current_scene]
-        print("\n" + scene["text"] + "\n")
-        
-        if not scene["choices"]:
-            print("The end.")
-            break
-        for key, choice in scene["choices"].items():
-            print(f"{key}. {choice['text']}")
-        
-        choice = input("\nEnter your choice (number): ").strip()
-        if choice in scene["choices"]:
-            current_scene = scene["choices"][choice]["next_scene"]
+# Sidebar for user inputs
+st.sidebar.header("Stock Selection")
+ticker = st.sidebar.text_input("Enter Stock Ticker (e.g., AAPL, MSFT):", value="AAPL").upper()
+start_date = st.sidebar.date_input("Start Date", value=datetime.now() - timedelta(days=365))
+end_date = st.sidebar.date_input("End Date", value=datetime.now())
+
+# Fetch stock data
+if ticker:
+    try:
+        stock = yf.Ticker(ticker)
+        df = stock.history(start=start_date, end=end_date)
+
+        if not df.empty:
+            # Display stock info
+            st.header(f"{ticker} Stock Data")
+            st.subheader("Company Info")
+            info = stock.info
+            st.write(f"**Name**: {info.get('longName', 'N/A')}")
+            st.write(f"**Sector**: {info.get('sector', 'N/A')}")
+            st.write(f"**Market Cap**: ${info.get('marketCap', 'N/A'):,.2f}")
+
+            # Plot stock closing price
+            st.subheader("Closing Price Chart")
+            fig = px.line(df, x=df.index, y="Close", title=f"{ticker} Closing Price")
+            st.plotly_chart(fig)
+
+            # Display data table
+            st.subheader("Historical Data")
+            st.dataframe(df[["Open", "High", "Low", "Close", "Volume"]].round(2))
+
+            # Key metrics
+            st.subheader("Key Metrics")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Current Price", f"${df['Close'][-1]:,.2f}")
+            with col2:
+                st.metric("52-Week High", f"${info.get('fiftyTwoWeekHigh', 'N/A'):,.2f}")
+            with col3:
+                st.metric("52-Week Low", f"${info.get('fiftyTwoWeekLow', 'N/A'):,.2f}")
+
         else:
-            print("Invalid choice. Please select a valid option (e.g., 1, 2, 3).")
+            st.error("No data found for the selected ticker or date range.")
+    except Exception as e:
+        st.error(f"Error fetching data for {ticker}: {str(e)}")
+else:
+    st.info("Please enter a valid stock ticker to begin.")
 
-def run_streamlit():
-    """Run the interactive story in Streamlit."""
-    if not st:
-        print("Streamlit not available. Run this in a Streamlit environment.")
-        return
-    
-    st.title("Interactive Storytelling Adventure in Eldoria")
-    st.markdown("Choose your path to continue the adventure!")
-    
-    # Initialize session state
-    if 'current_scene' not in st.session_state:
-        st.session_state.current_scene = "start"
-    
-    current_scene = st.session_state.current_scene
-    scene = story[current_scene]
-    
-    # Display current scene
-    st.write("### Current Scene")
-    st.write(scene["text"])
-    
-    # Display choices
-    if scene["choices"]:
-        st.write("### Your Choices")
-        choice_options = [f"{key}. {choice['text']}" for key, choice in scene["choices"].items()]
-        selected_option = st.selectbox("Choose your action:", choice_options, key="choice_select")
-        
-        if st.button("Submit"):
-            choice_key = selected_option.split(".")[0]
-            if choice_key in scene["choices"]:
-                st.session_state.current_scene = scene["choices"][choice_key]["next_scene"]
-                st.rerun()
-            else:
-                st.error("Invalid choice. Please select a valid option.")
-    else:
-        st.write("### The End")
-        if st.button("Restart"):
-            st.session_state.current_scene = "start"
-            st.rerun()
-
-if __name__ == "__main__":
-    if "streamlit" in sys.modules:
-        run_streamlit()
-    else:
-        print("Starting Interactive Storytelling App...")
-        run_colab()
+# Instructions to run the app
+st.sidebar.markdown("""
+---
+### How to Run
+1. Save this code as `app.py`.
+2. Install dependencies:  
+   ```bash
+   pip install streamlit yfinance pandas plotly
+   """)
