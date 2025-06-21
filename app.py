@@ -1,66 +1,104 @@
 
+# app.py
 import streamlit as st
-import yfinance as yf
 import pandas as pd
-import plotly.express as px
-from datetime import datetime, timedelta
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+import numpy as np
 
-# Set page title
-st.title("Simple Stock Data App")
+# Set page configuration
+st.set_page_config(page_title="Iris Flower Prediction", page_icon="🌺")
 
-# Sidebar for user inputs
-st.sidebar.header("Stock Selection")
-ticker = st.sidebar.text_input("Enter Stock Ticker (e.g., AAPL, MSFT):", value="AAPL").upper()
-start_date = st.sidebar.date_input("Start Date", value=datetime.now() - timedelta(days=365))
-end_date = st.sidebar.date_input("End Date", value=datetime.now())
+# Title and description
+st.title("🌺 Iris Flower Species Prediction")
+st.write("""
+    This app predicts the Iris flower species based on sepal and petal measurements.
+    Enter the measurements below and click 'Predict' to see the result!
+""")
 
-# Fetch stock data
-if ticker:
-    try:
-        stock = yf.Ticker(ticker)
-        df = stock.history(start=start_date, end=end_date)
+# Load and prepare the Iris dataset
+@st.cache_data
+def load_data():
+    iris = load_iris()
+    df = pd.DataFrame(data=iris.data, columns=iris.feature_names)
+    df['species'] = iris.target
+    return df, iris.feature_names, iris.target_names
 
-        if not df.empty:
-            # Display stock info
-            st.header(f"{ticker} Stock Data")
-            st.subheader("Company Info")
-            info = stock.info
-            st.write(f"**Name**: {info.get('longName', 'N/A')}")
-            st.write(f"**Sector**: {info.get('sector', 'N/A')}")
-            st.write(f"**Market Cap**: ${info.get('marketCap', 'N/A'):,.2f}")
+df, feature_names, target_names = load_data()
 
-            # Plot stock closing price
-            st.subheader("Closing Price Chart")
-            fig = px.line(df, x=df.index, y="Close", title=f"{ticker} Closing Price")
-            st.plotly_chart(fig)
+# Train the model
+@st.cache_resource
+def train_model():
+    X = df[feature_names]
+    y = df['species']
+    X_train, _, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=42)
+    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    model.fit(X_train, y_train)
+    return model
 
-            # Display data table
-            st.subheader("Historical Data")
-            st.dataframe(df[["Open", "High", "Low", "Close", "Volume"]].round(2))
+model = train_model()
 
-            # Key metrics
-            st.subheader("Key Metrics")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Current Price", f"${df['Close'][-1]:,.2f}")
-            with col2:
-                st.metric("52-Week High", f"${info.get('fiftyTwoWeekHigh', 'N/A'):,.2f}")
-            with col3:
-                st.metric("52-Week Low", f"${info.get('fiftyTwoWeekLow', 'N/A'):,.2f}")
+# Create input fields
+st.subheader("Enter Iris Measurements")
+col1, col2 = st.columns(2)
 
-        else:
-            st.error("No data found for the selected ticker or date range.")
-    except Exception as e:
-        st.error(f"Error fetching data for {ticker}: {str(e)}")
-else:
-    st.info("Please enter a valid stock ticker to begin.")
+with col1:
+    sepal_length = st.slider("Sepal Length (cm)", 
+                            min_value=0.0, 
+                            max_value=10.0, 
+                            value=5.0, 
+                            step=0.1)
+    sepal_width = st.slider("Sepal Width (cm)", 
+                           min_value=0.0, 
+                           max_value=10.0, 
+                           value=3.0, 
+                           step=0.1)
 
-# Instructions to run the app
-st.sidebar.markdown("""
----
-### How to Run
-1. Save this code as `app.py`.
-2. Install dependencies:  
-   ```bash
-   pip install streamlit yfinance pandas plotly
-   """)
+with col2:
+    petal_length = st.slider("Petal Length (cm)", 
+                            min_value=0.0, 
+                            max_value=10.0, 
+                            value=1.5, 
+                            step=0.1)
+    petal_width = st.slider("Petal Width (cm)", 
+                           min_value=0.0, 
+                           max_value=10.0, 
+                           value=0.2, 
+                           step=0.1)
+
+# Prediction button
+if st.button("Predict"):
+    # Prepare input data
+    input_data = np.array([[sepal_length, sepal_width, petal_length, petal_width]])
+    
+    # Make prediction
+    prediction = model.predict(input_data)
+    predicted_species = target_names[prediction][0]
+    
+    # Display result
+    st.subheader("Prediction Result")
+    st.success(f"The predicted Iris species is: **{predicted_species}**")
+    
+    # Display input values
+    st.write("Input Measurements:")
+    st.write(f"- Sepal Length: {sepal_length} cm")
+    st.write(f"- Sepal Width: {sepal_width} cm")
+    st.write(f"- Petal Length: {petal_length} cm")
+    st.write(f"- Petal Width: {petal_width} cm")
+
+# Add some information about the model
+st.sidebar.header("About the Model")
+st.sidebar.write("""
+    This application uses a Random Forest Classifier trained on the Iris dataset.
+    The dataset contains 150 samples of three Iris species:
+    - Iris Setosa
+    - Iris Versicolor
+    - Iris Virginica
+    
+    Features used for prediction:
+    - Sepal Length
+    - Sepal Width
+    - Petal Length
+    - Petal Width
+""")
