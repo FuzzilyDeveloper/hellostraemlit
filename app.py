@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import keras
 
 # Load the model
 model = joblib.load('bag_price_predictor.pkl')
