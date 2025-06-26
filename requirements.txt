@@ -2,7 +2,7 @@ streamlit
 yfinance
 pandas
 plotly
-scikit-learn
+scikit-learn==1.5.2
 numpy
 joblib
-keras
+
